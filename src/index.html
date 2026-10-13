@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>AuspiCal</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-left">
+        <h1 class="logo">AuspiCal</h1>
+        <div class="nav-controls">
+          <button id="prevBtn" class="btn btn-secondary">&lt;</button>
+          <button id="todayBtn" class="btn btn-secondary">今日</button>
+          <button id="nextBtn" class="btn btn-secondary">&gt;</button>
+        </div>
+        <div class="date-selector-group">
+          <select id="yearSelect" class="select-box"></select>
+          <select id="monthSelect" class="select-box"></select>
+        </div>
+        <div id="currentRangeLabel" class="current-range-label"></div>
+      </div>
+
+      <div class="header-right">
+        <!-- 検索 -->
+        <div class="search-box">
+          <input type="text" id="searchInput" placeholder="予定を検索..." />
+          <button id="clearSearchBtn" class="btn-clear hidden">&times;</button>
+        </div>
+
+        <!-- 4ビュー切り替え (Y, M, W, D) -->
+        <div class="view-switcher">
+          <button data-view="year" class="btn btn-view" title="ショートカット: Y">年 (Y)</button>
+          <button data-view="month" class="btn btn-view active" title="ショートカット: M">月 (M)</button>
+          <button data-view="week" class="btn btn-view" title="ショートカット: W">週 (W)</button>
+          <button data-view="day" class="btn btn-view" title="ショートカット: D">日 (D)</button>
+        </div>
+
+        <!-- 予定追加ボタン -->
+        <button id="openAddModalBtn" class="btn btn-primary">+ 予定を追加</button>
+      </div>
+    </header>
+
+    <!-- Calendar Views -->
+    <main class="calendar-content">
+      <!-- 1. 年ビュー -->
+      <section id="yearView" class="view-panel">
+        <div id="yearGrid" class="year-grid"></div>
+      </section>
+
+      <!-- 2. 月ビュー -->
+      <section id="monthView" class="view-panel active">
+        <div class="weekdays-grid">
+          <div class="weekday col-sun">日</div>
+          <div class="weekday col-weekday">月</div>
+          <div class="weekday col-weekday">火</div>
+          <div class="weekday col-weekday">水</div>
+          <div class="weekday col-weekday">木</div>
+          <div class="weekday col-weekday">金</div>
+          <div class="weekday col-sat">土</div>
+        </div>
+        <div id="monthDaysGrid" class="days-grid"></div>
+      </section>
+
+      <!-- 3. 週ビュー (終日枠 + タイムライン) -->
+      <section id="weekView" class="view-panel">
+        <div class="week-header-row" id="weekHeaderRow"></div>
+        <div class="week-allday-row" id="weekAllDayRow"></div>
+        <div class="timeline-scroll-area">
+          <div class="timeline-grid-container" id="weekTimelineContainer"></div>
+        </div>
+      </section>
+
+      <!-- 4. 日ビュー (左: 終日枠+タイムライン / 右: 一覧) -->
+      <section id="dayView" class="view-panel">
+        <div class="day-split-view">
+          <div class="day-left-pane">
+            <div class="pane-title" id="dayTimelineTitle">タイムライン</div>
+            <div class="day-allday-row" id="dayAllDayRow"></div>
+            <div class="timeline-scroll-area">
+              <div class="timeline-grid-container" id="dayTimelineContainer"></div>
+            </div>
+          </div>
+          <div class="day-right-pane">
+            <div class="pane-title" id="dayListTitle">予定一覧</div>
+            <div class="day-list-container" id="dayListContainer"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- 予定追加モーダル -->
+  <div id="eventModal" class="modal-overlay hidden">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>予定を追加</h3>
+        <button id="closeModalBtn" class="btn-close">&times;</button>
+      </div>
+      <form id="eventForm">
+        <div class="form-group">
+          <label for="eventTitle">タイトル <span class="required">*</span></label>
+          <input type="text" id="eventTitle" required placeholder="例: 出張、旅行、会議" />
+        </div>
+
+        <!-- 終日トグル -->
+        <div class="form-group-checkbox">
+          <label>
+            <input type="checkbox" id="eventIsAllDay" />
+            <span class="checkbox-label">終日イベント</span>
+          </label>
+        </div>
+
+        <!-- 日時設定 -->
+        <div class="form-row">
+          <div class="form-group flex-2">
+            <label for="eventStartDate">開始日 <span class="required">*</span></label>
+            <input type="date" id="eventStartDate" min="1970-01-01" required />
+          </div>
+          <div class="form-group flex-1" id="startTimeGroup">
+            <label for="eventStartTime">開始時刻</label>
+            <input type="time" id="eventStartTime" />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-2">
+            <label for="eventEndDate">終了日 <span class="required">*</span></label>
+            <input type="date" id="eventEndDate" min="1970-01-01" required />
+          </div>
+          <div class="form-group flex-1" id="endTimeGroup">
+            <label for="eventEndTime">終了時刻</label>
+            <input type="time" id="eventEndTime" />
+          </div>
+        </div>
+
+        <!-- カラー選択 -->
+        <div class="form-group">
+          <label>カラー</label>
+          <div class="color-picker-row">
+            <input type="color" id="eventColor" value="#3b82f6" class="color-input" />
+            <div class="recent-colors-container">
+              <span class="recent-label">最近使用した色:</span>
+              <div id="recentColorsList" class="recent-colors-list"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="eventDesc">詳細 / メモ</label>
+          <textarea id="eventDesc" rows="3" placeholder="メモを入力..."></textarea>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" id="cancelModalBtn" class="btn btn-secondary">キャンセル</button>
+          <button type="submit" class="btn btn-primary">保存する</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 削除確認モーダル -->
+  <div id="deleteConfirmModal" class="modal-overlay hidden">
+    <div class="modal-box modal-box-small">
+      <div class="modal-header">
+        <h3 style="color: #ef4444;">予定の削除</h3>
+      </div>
+      <p id="deleteConfirmMessage" class="confirm-message">この予定を削除しますか？</p>
+      <div class="modal-actions">
+        <button id="cancelDeleteBtn" class="btn btn-secondary">キャンセル</button>
+        <button id="executeDeleteBtn" class="btn btn-danger">削除</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 検索結果ポップアップ -->
+  <div id="searchResults" class="search-dropdown hidden"></div>
+
+  <script src="main.js"></script>
+</body>
+</html>
