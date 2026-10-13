@@ -65,6 +65,18 @@ fn add_event(event: CalendarEvent, state: State<AppState>) -> Result<CalendarEve
 }
 
 #[tauri::command]
+fn update_event(event: CalendarEvent, state: State<AppState>) -> Result<CalendarEvent, String> {
+    let mut lock = state.events.lock().unwrap();
+    if let Some(existing) = lock.iter_mut().find(|e| e.id == event.id) {
+        *existing = event.clone();
+        save_events_to_disk(&lock);
+        Ok(event)
+    } else {
+        Err("Event not found".into())
+    }
+}
+
+#[tauri::command]
 fn delete_event(id: String, state: State<AppState>) -> Result<bool, String> {
     let mut lock = state.events.lock().unwrap();
     let initial_len = lock.len();
@@ -103,6 +115,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             get_events,
             add_event,
+            update_event,
             delete_event,
             search_events
         ])

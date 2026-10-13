@@ -7,6 +7,13 @@ const invoke = window.__TAURI__ ? window.__TAURI__.core.invoke : async (cmd, arg
     localStorage.setItem("mock_events", JSON.stringify(events));
     return args.event;
   }
+  if (cmd === "update_event") {
+    let events = JSON.parse(localStorage.getItem("mock_events") || "[]");
+    const idx = events.findIndex(e => e.id === args.event.id);
+    if (idx !== -1) events[idx] = args.event;
+    localStorage.setItem("mock_events", JSON.stringify(events));
+    return args.event;
+  }
   if (cmd === "delete_event") {
     let events = JSON.parse(localStorage.getItem("mock_events") || "[]");
     events = events.filter(e => e.id !== args.id);
@@ -166,9 +173,12 @@ const dayListContainer = document.getElementById("dayListContainer");
 
 // Modal
 const eventModal = document.getElementById("eventModal");
+const modalTitle = document.getElementById("modalTitle");
+const editingEventId = document.getElementById("editingEventId");
 const openAddModalBtn = document.getElementById("openAddModalBtn");
 const closeModalBtn = document.getElementById("closeModalBtn");
 const cancelModalBtn = document.getElementById("cancelModalBtn");
+const submitEventBtn = document.getElementById("submitEventBtn");
 const eventForm = document.getElementById("eventForm");
 const eventTitle = document.getElementById("eventTitle");
 const eventIsAllDay = document.getElementById("eventIsAllDay");
@@ -176,6 +186,7 @@ const eventStartDate = document.getElementById("eventStartDate");
 const eventEndDate = document.getElementById("eventEndDate");
 const eventStartTime = document.getElementById("eventStartTime");
 const eventEndTime = document.getElementById("eventEndTime");
+const eventDesc = document.getElementById("eventDesc");
 const eventColor = document.getElementById("eventColor");
 const recentColorsList = document.getElementById("recentColorsList");
 
@@ -191,7 +202,7 @@ const clearSearchBtn = document.getElementById("clearSearchBtn");
 const searchResults = document.getElementById("searchResults");
 
 // ==========================================
-// 初期化 & 年セレクト (1970年〜今年+100年)
+// 初期化
 // ==========================================
 function initYearOptions() {
   const currentYear = new Date().getFullYear();
@@ -259,7 +270,7 @@ executeDeleteBtn.addEventListener("click", async () => {
   }
 });
 
-// 終日チェックボックスの連動（時刻入力の有効/無効）
+// 終日チェックボックス
 eventIsAllDay.addEventListener("change", () => {
   const isAllDay = eventIsAllDay.checked;
   eventStartTime.disabled = isAllDay;
@@ -298,12 +309,10 @@ function isEventOnDate(event, dateStr) {
   return dateStr >= event.start_date && dateStr <= event.end_date;
 }
 
-// イベントが終日扱い（または複数日）かどうか
 function isAllDayOrSpanning(event) {
   return event.is_all_day || (event.start_date !== event.end_date) || (!event.start_time);
 }
 
-// タイムラインの24時間軸
 function createTimeAxis() {
   const axis = document.createElement("div");
   axis.className = "time-axis";
@@ -316,7 +325,6 @@ function createTimeAxis() {
   return axis;
 }
 
-// 1時間ごとの点線スロット
 function createHourSlots() {
   const frag = document.createDocumentFragment();
   for (let h = 0; h < 24; h++) {
@@ -328,7 +336,7 @@ function createHourSlots() {
 }
 
 // ==========================================
-// 1. 月ビュー (複数日リボンバー対応)
+// 1. 月ビュー
 // ==========================================
 function renderMonthView() {
   const year = currentDate.getFullYear();
@@ -395,7 +403,6 @@ function createMonthCell(date, isOtherMonth, todayStr, holidays) {
   const evBox = document.createElement("div");
   evBox.className = "events-container";
 
-  // 日付に重なる予定を抽出
   const dayEvents = allEvents.filter(e => isEventOnDate(e, dateStr));
 
   dayEvents.forEach(e => {
@@ -404,23 +411,15 @@ function createMonthCell(date, isOtherMonth, todayStr, holidays) {
     chip.style.backgroundColor = e.color || "#3b82f6";
 
     if (isMultiDay) {
-      // 複数日イベント: 連続した帯（リボンバー）として描画
       chip.className = "event-chip spanning";
+      const isStart = (dateStr === e.start_date) || (dayOfWeek === 0);
+      const isEnd = (dateStr === e.end_date) || (dayOfWeek === 6);
 
-      const isStart = (dateStr === e.start_date) || (dayOfWeek === 0); // 開始日、または週の頭
-      const isEnd = (dateStr === e.end_date) || (dayOfWeek === 6);     // 終了日、または週の末尾
+      if (isStart && isEnd) chip.classList.add("span-start", "span-end");
+      else if (isStart) chip.classList.add("span-start");
+      else if (isEnd) chip.classList.add("span-end");
+      else chip.classList.add("span-middle");
 
-      if (isStart && isEnd) {
-        chip.classList.add("span-start", "span-end");
-      } else if (isStart) {
-        chip.classList.add("span-start");
-      } else if (isEnd) {
-        chip.classList.add("span-end");
-      } else {
-        chip.classList.add("span-middle");
-      }
-
-      // 開始日または週頭の日だけタイトルと削除ボタンを表示して見やすくする
       if (isStart) {
         chip.innerHTML = `
           <span style="font-weight:600;" title="${escapeHtml(e.title)}">${escapeHtml(e.title)}</span>
@@ -434,7 +433,6 @@ function createMonthCell(date, isOtherMonth, todayStr, holidays) {
         chip.innerHTML = `<span></span>`;
       }
     } else {
-      // 単日イベント
       chip.className = "event-chip";
       const timeDisplay = (!e.is_all_day && e.start_time) ? e.start_time + " " : "";
       chip.innerHTML = `
@@ -447,11 +445,24 @@ function createMonthCell(date, isOtherMonth, todayStr, holidays) {
       });
     }
 
+    // 予定をクリックしたら編集モーダルを開く
+    chip.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      openEditModal(e);
+    });
+
     evBox.appendChild(chip);
   });
 
   cell.appendChild(evBox);
-  cell.addEventListener("click", () => openModalForDate(dateStr));
+
+  // ★ 日付のセルをクリックすると日表示に切り替える
+  cell.addEventListener("click", () => {
+    const [y, m, d] = dateStr.split("-").map(Number);
+    currentDate = new Date(y, m - 1, d);
+    switchView("day");
+  });
+
   return cell;
 }
 
@@ -511,7 +522,7 @@ function renderYearView() {
 }
 
 // ==========================================
-// 3. 週ビュー (終日エリア + 24時間タイムライン)
+// 3. 週ビュー
 // ==========================================
 function renderWeekView() {
   weekHeaderRow.innerHTML = "";
@@ -525,18 +536,15 @@ function renderWeekView() {
   startOfWeek.setDate(currentDate.getDate() - currentDate.getDay());
   const todayStr = formatDateString(new Date());
 
-  // ダミーの時刻ヘッダー
   const dummy = document.createElement("div");
   dummy.className = "week-header-time-dummy";
   weekHeaderRow.appendChild(dummy);
 
-  // 終日ラベル
   const allDayLabel = document.createElement("div");
   allDayLabel.className = "allday-label-col";
   allDayLabel.textContent = "終日";
   weekAllDayRow.appendChild(allDayLabel);
 
-  // タイムライン用時刻軸
   weekTimelineContainer.appendChild(createTimeAxis());
 
   for (let i = 0; i < 7; i++) {
@@ -549,7 +557,7 @@ function renderWeekView() {
     if (i === 0) colClass = "col-sun";
     if (i === 6) colClass = "col-sat";
 
-    // 1. ヘッダーセル
+    // ヘッダー
     const headerCol = document.createElement("div");
     headerCol.className = `week-header-col ${colClass}`;
     if (holidayName) headerCol.classList.add("is-holiday");
@@ -558,9 +566,15 @@ function renderWeekView() {
       <div style="font-size:14px; font-weight:700; ${dateStr === todayStr ? "color:#2563eb;" : ""}">${dayDate.getDate()}日</div>
       ${holidayName ? `<div style="font-size:10px; color:#e11d48;">${holidayName}</div>` : ""}
     `;
+    // 週ヘッダーをクリックするとその日の日表示へ
+    headerCol.style.cursor = "pointer";
+    headerCol.addEventListener("click", () => {
+      currentDate = new Date(dayDate);
+      switchView("day");
+    });
     weekHeaderRow.appendChild(headerCol);
 
-    // 2. 終日セル (複数日・終日予定を配置)
+    // 終日セル
     const adCell = document.createElement("div");
     adCell.className = `allday-cell ${colClass}`;
     if (holidayName) adCell.classList.add("is-holiday");
@@ -590,11 +604,18 @@ function renderWeekView() {
       } else {
         chip.innerHTML = `<span></span>`;
       }
+
+      // 編集モーダルを開く
+      chip.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        openEditModal(e);
+      });
+
       adCell.appendChild(chip);
     });
     weekAllDayRow.appendChild(adCell);
 
-    // 3. タイムラインセル (時間指定があるイベントのみ配置)
+    // タイムラインセル
     const col = document.createElement("div");
     col.className = `timeline-column ${colClass}`;
     if (holidayName) col.classList.add("is-holiday");
@@ -608,7 +629,7 @@ function renderWeekView() {
 
     col.addEventListener("click", (ev) => {
       if (ev.target === col || ev.target.classList.contains("hour-slot")) {
-        openModalForDate(dateStr);
+        openAddModalForDate(dateStr);
       }
     });
 
@@ -616,7 +637,6 @@ function renderWeekView() {
   }
 }
 
-// タイムライン上のイベントカード（時間指定がある場合のみ）
 function createTimelineEventCard(event) {
   const card = document.createElement("div");
   card.className = "timeline-event-card";
@@ -657,11 +677,17 @@ function createTimelineEventCard(event) {
     promptDeleteEvent(event);
   });
 
+  // 編集モーダルを開く
+  card.addEventListener("click", (ev) => {
+    ev.stopPropagation();
+    openEditModal(event);
+  });
+
   return card;
 }
 
 // ==========================================
-// 4. 日ビュー (左: 終日枠+タイムライン / 右: 一覧)
+// 4. 日ビュー
 // ==========================================
 function renderDayView() {
   const dateStr = formatDateString(currentDate);
@@ -672,7 +698,7 @@ function renderDayView() {
   dayTimelineTitle.innerHTML = `タイムライン (${currentDate.getMonth() + 1}月${currentDate.getDate()}日 ${dayOfWeek}曜日 ${holidayName ? "🎌 " + holidayName : ""})`;
   dayListTitle.textContent = `${currentDate.getFullYear()}年${currentDate.getMonth() + 1}月${currentDate.getDate()}日の予定一覧`;
 
-  // 1. 終日エリア
+  // 終日エリア
   dayAllDayRow.innerHTML = "";
   const allDayLabel = document.createElement("div");
   allDayLabel.className = "allday-label-col";
@@ -695,11 +721,15 @@ function renderDayView() {
       ev.stopPropagation();
       promptDeleteEvent(e);
     });
+    chip.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      openEditModal(e);
+    });
     adCell.appendChild(chip);
   });
   dayAllDayRow.appendChild(adCell);
 
-  // 2. タイムラインエリア
+  // タイムラインエリア
   dayTimelineContainer.innerHTML = "";
   dayTimelineContainer.appendChild(createTimeAxis());
 
@@ -720,12 +750,12 @@ function renderDayView() {
 
   col.addEventListener("click", (ev) => {
     if (ev.target === col || ev.target.classList.contains("hour-slot")) {
-      openModalForDate(dateStr);
+      openAddModalForDate(dateStr);
     }
   });
   dayTimelineContainer.appendChild(col);
 
-  // 3. 右ペイン: 予定一覧
+  // 右ペイン: 予定一覧
   const dayEvents = allEvents.filter(e => isEventOnDate(e, dateStr));
   dayListContainer.innerHTML = "";
   if (dayEvents.length === 0) {
@@ -749,8 +779,13 @@ function renderDayView() {
         <button class="btn btn-secondary" style="color:#ef4444;" title="削除">&times;</button>
       `;
 
-      card.querySelector("button").addEventListener("click", () => {
+      card.querySelector("button").addEventListener("click", (ev) => {
+        ev.stopPropagation();
         promptDeleteEvent(e);
+      });
+
+      card.addEventListener("click", () => {
+        openEditModal(e);
       });
 
       dayListContainer.appendChild(card);
@@ -825,20 +860,52 @@ monthSelect.addEventListener("change", (e) => {
 });
 
 // ==========================================
-// モーダルと予定登録
+// 予定追加 / 編集モーダル操作
 // ==========================================
-function openModalForDate(dateStr) {
+function openAddModalForDate(dateStr) {
   const d = dateStr || formatDateString(new Date());
+  editingEventId.value = "";
+  modalTitle.textContent = "予定を追加";
+  submitEventBtn.textContent = "保存する";
+
+  eventTitle.value = "";
   eventStartDate.value = d;
   eventEndDate.value = d;
   eventIsAllDay.checked = false;
   eventStartTime.disabled = false;
   eventEndTime.disabled = false;
+  eventStartTime.value = "";
+  eventEndTime.value = "";
+  eventDesc.value = "";
+  eventColor.value = recentColors[0] || "#3b82f6";
+
   eventModal.classList.remove("hidden");
   renderRecentColors();
 }
 
-openAddModalBtn.addEventListener("click", () => openModalForDate(formatDateString(currentDate)));
+function openEditModal(event) {
+  editingEventId.value = event.id;
+  modalTitle.textContent = "予定を編集";
+  submitEventBtn.textContent = "更新する";
+
+  eventTitle.value = event.title;
+  eventStartDate.value = event.start_date;
+  eventEndDate.value = event.end_date;
+  eventIsAllDay.checked = !!event.is_all_day;
+
+  eventStartTime.disabled = !!event.is_all_day;
+  eventEndTime.disabled = !!event.is_all_day;
+  eventStartTime.value = event.start_time || "";
+  eventEndTime.value = event.end_time || "";
+
+  eventDesc.value = event.description || "";
+  eventColor.value = event.color || "#3b82f6";
+
+  eventModal.classList.remove("hidden");
+  renderRecentColors();
+}
+
+openAddModalBtn.addEventListener("click", () => openAddModalForDate(formatDateString(currentDate)));
 closeModalBtn.addEventListener("click", () => eventModal.classList.add("hidden"));
 cancelModalBtn.addEventListener("click", () => eventModal.classList.add("hidden"));
 
@@ -851,7 +918,7 @@ eventForm.addEventListener("submit", async (e) => {
   const eDate = eventEndDate.value;
   const sTime = (!isAllDay && eventStartTime.value) ? eventStartTime.value : null;
   const eTime = (!isAllDay && eventEndTime.value) ? eventEndTime.value : null;
-  const desc = document.getElementById("eventDesc").value.trim() || null;
+  const desc = eventDesc.value.trim() || null;
   const color = eventColor.value;
 
   if (!title || !sDate || !eDate) return;
@@ -860,8 +927,10 @@ eventForm.addEventListener("submit", async (e) => {
     return;
   }
 
-  const newEvent = {
-    id: "evt_" + Date.now(),
+  const id = editingEventId.value || ("evt_" + Date.now());
+
+  const eventPayload = {
+    id,
     title,
     start_date: sDate,
     end_date: eDate,
@@ -873,7 +942,13 @@ eventForm.addEventListener("submit", async (e) => {
   };
 
   addRecentColor(color);
-  await invoke("add_event", { event: newEvent });
+
+  if (editingEventId.value) {
+    await invoke("update_event", { event: eventPayload });
+  } else {
+    await invoke("add_event", { event: eventPayload });
+  }
+
   eventModal.classList.add("hidden");
   eventForm.reset();
   await fetchEvents();
@@ -905,9 +980,7 @@ searchInput.addEventListener("input", async (e) => {
         <div class="search-item-date">${item.start_date} 〜 ${item.end_date}</div>
       `;
       div.addEventListener("click", () => {
-        const [y, m, d] = item.start_date.split("-").map(Number);
-        currentDate = new Date(y, m - 1, d);
-        switchView("day");
+        openEditModal(item);
         searchResults.classList.add("hidden");
       });
       searchResults.appendChild(div);

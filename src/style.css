@@ -204,11 +204,15 @@ body {
 }
 .day-cell {
   background-color: #ffffff;
-  padding: 4px 0; /* 左右パディングを0にして帯を密着させる */
+  padding: 4px 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   cursor: pointer;
+  transition: background-color 0.1s ease;
+}
+.day-cell:hover {
+  filter: brightness(0.97);
 }
 .day-cell.other-month { opacity: 0.4; }
 .day-cell.today .day-num {
@@ -253,27 +257,30 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  cursor: pointer;
+  transition: opacity 0.1s ease, transform 0.05s ease;
+}
+.event-chip:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
 }
 
-/* 複数日にまたがるリボンバー (隙間なく完全に繋がるデザイン) */
+/* 複数日にまたがるリボンバー */
 .event-chip.spanning {
   margin: 0;
   border-radius: 0;
   height: 20px;
 }
-/* 開始日（または行の先頭の日曜） */
 .event-chip.spanning.span-start {
   margin-left: 4px;
   border-top-left-radius: 4px;
   border-bottom-left-radius: 4px;
 }
-/* 終了日（または行の末尾の土曜） */
 .event-chip.spanning.span-end {
   margin-right: 4px;
   border-top-right-radius: 4px;
   border-bottom-right-radius: 4px;
 }
-/* 中間日は左右マージンなし・角丸なし */
 .event-chip.spanning.span-middle {
   margin-left: 0;
   margin-right: 0;
@@ -285,7 +292,10 @@ body {
   font-size: 14px;
   opacity: 0.85;
 }
-.event-chip .del-btn:hover { opacity: 1; }
+.event-chip .del-btn:hover {
+  opacity: 1;
+  color: #fecaca;
+}
 
 /* ===============================
    年ビュー
@@ -335,7 +345,7 @@ body {
 }
 
 /* ===============================
-   終日エリア (週・日ビュー共通)
+   終日エリア (週・日ビュー)
    =============================== */
 .week-allday-row, .day-allday-row {
   display: flex;
@@ -367,7 +377,7 @@ body {
 }
 
 /* ===============================
-   タイムライン (24時間表記 & 1時間点線)
+   タイムライン
    =============================== */
 .timeline-scroll-area {
   flex: 1;
@@ -377,7 +387,7 @@ body {
 }
 .timeline-grid-container {
   display: flex;
-  min-height: 1200px; /* 24時間 × 50px */
+  min-height: 1200px;
   position: relative;
 }
 .time-axis {
@@ -419,6 +429,10 @@ body {
   align-items: flex-start;
   z-index: 5;
   cursor: pointer;
+  transition: opacity 0.1s ease;
+}
+.timeline-event-card:hover {
+  opacity: 0.92;
 }
 
 /* 週ビュー ヘッダー */
@@ -491,6 +505,12 @@ body {
   justify-content: space-between;
   align-items: center;
   box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+.day-event-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 6px rgba(0,0,0,0.06);
 }
 
 /* Modal */

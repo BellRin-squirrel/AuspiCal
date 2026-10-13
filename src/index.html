@@ -92,14 +92,16 @@
     </main>
   </div>
 
-  <!-- 予定追加モーダル -->
+  <!-- 予定追加・編集モーダル -->
   <div id="eventModal" class="modal-overlay hidden">
     <div class="modal-box">
       <div class="modal-header">
-        <h3>予定を追加</h3>
+        <h3 id="modalTitle">予定を追加</h3>
         <button id="closeModalBtn" class="btn-close">&times;</button>
       </div>
       <form id="eventForm">
+        <input type="hidden" id="editingEventId" value="" />
+
         <div class="form-group">
           <label for="eventTitle">タイトル <span class="required">*</span></label>
           <input type="text" id="eventTitle" required placeholder="例: 出張、旅行、会議" />
@@ -155,7 +157,7 @@
 
         <div class="modal-actions">
           <button type="button" id="cancelModalBtn" class="btn btn-secondary">キャンセル</button>
-          <button type="submit" class="btn btn-primary">保存する</button>
+          <button type="submit" id="submitEventBtn" class="btn btn-primary">保存する</button>
         </div>
       </form>
     </div>
