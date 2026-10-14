@@ -1,3 +1,10 @@
+/* ===============================
+   汎用ユーティリティ (必須)
+   =============================== */
+.hidden {
+  display: none !important;
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -64,7 +71,6 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  text-decoration: none;
 }
 
 .btn-primary { background-color: #2563eb; color: #ffffff; }
@@ -137,7 +143,7 @@ body {
   color: #94a3b8;
 }
 
-/* Account Menu */
+/* Account Button & Dropdown */
 .account-menu-container {
   position: relative;
 }
@@ -160,9 +166,10 @@ body {
   background: #2563eb;
   color: #ffffff;
   border-color: #2563eb;
+  font-weight: 700;
 }
 .avatar-icon {
-  font-size: 16px;
+  font-size: 15px;
 }
 
 .account-dropdown {
@@ -458,9 +465,7 @@ body {
   align-items: flex-start;
   z-index: 5;
   cursor: pointer;
-  transition: opacity 0.1s ease;
 }
-.timeline-event-card:hover { opacity: 0.92; }
 
 .week-header-row {
   display: flex;
@@ -502,7 +507,6 @@ body {
   box-shadow: 0 1px 2px rgba(0,0,0,0.03);
   cursor: pointer;
 }
-.day-event-card:hover { transform: translateY(-1px); box-shadow: 0 3px 6px rgba(0,0,0,0.06); }
 
 /* Modal Base */
 .modal-overlay {
@@ -514,7 +518,6 @@ body {
   justify-content: center;
   z-index: 100;
 }
-.modal-overlay.hidden { display: none; }
 .modal-box {
   background: #ffffff;
   width: 460px;
@@ -554,12 +557,8 @@ body {
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
 .required { color: #ef4444; }
 
-/* ===============================
-   ログイン / 認証モーダル UI
-   =============================== */
-.auth-modal-box {
-  width: 420px;
-}
+/* 認証モーダル UI */
+.auth-modal-box { width: 420px; }
 .auth-notice {
   font-size: 11px;
   color: #64748b;
@@ -574,7 +573,7 @@ body {
   background-color: #eff6ff;
   border: 2px dashed #93c5fd;
   border-radius: 8px;
-  padding: 18px;
+  padding: 16px;
   text-align: center;
   margin-bottom: 16px;
 }
@@ -619,16 +618,8 @@ body {
   gap: 2px;
   flex: 1;
 }
-#pollingStatusText {
-  font-size: 12px;
-  font-weight: 600;
-  color: #334155;
-}
-.timer-badge {
-  font-size: 11px;
-  color: #e11d48;
-  font-weight: 600;
-}
+#pollingStatusText { font-size: 12px; font-weight: 600; color: #334155; }
+.timer-badge { font-size: 11px; color: #e11d48; font-weight: 600; }
 
 .auth-error-msg {
   background-color: #fef2f2;
@@ -640,7 +631,6 @@ body {
   margin-top: 12px;
 }
 
-/* スピナー */
 .spinner {
   width: 20px;
   height: 20px;
@@ -668,7 +658,6 @@ body {
   z-index: 50;
   padding: 6px;
 }
-.search-dropdown.hidden { display: none; }
 .search-item { padding: 8px 10px; border-radius: 6px; cursor: pointer; }
 .search-item:hover { background: #f1f5f9; }
 .search-item-title { font-size: 13px; font-weight: 600; }
