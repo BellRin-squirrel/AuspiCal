@@ -108,7 +108,7 @@ fn url_encode(input: &str) -> String {
 }
 
 // ==========================================
-// コマンド群
+// カレンダーコマンド
 // ==========================================
 #[tauri::command]
 fn get_events(state: State<AppState>) -> Vec<CalendarEvent> {
@@ -164,8 +164,11 @@ fn search_events(query: String, state: State<AppState>) -> Vec<CalendarEvent> {
         .collect()
 }
 
+// ==========================================
+// 認証コマンド
+// ==========================================
 fn generate_secure_auth_code() -> String {
-    const CHARS: &[u8] = b"2345678ABCDEFGHJKLMNPRSTUVWXYZ";
+    const CHARS: &[u8] = b"2345678ABCDEFGHJKLMNPRSTUVWXYZ"; // 30文字
     let mut rng = rand::rngs::OsRng;
     (0..8)
         .map(|_| {
@@ -205,7 +208,27 @@ async fn register_auth_code(
     let code = generate_secure_auth_code();
     let (model, os) = get_device_info();
 
-    let client = reqwest::Client::new();
+    let web_url = format!(
+        "{}?code={}&username={}",
+        WEB_AUTH_PAGE_URL,
+        url_encode(&code),
+        url_encode(&username)
+    );
+
+    // サーバーURLが初期値のままの場合は開発モックとして即座にコードを発行
+    if API_BASE_URL.contains("your-server-domain.com") || API_BASE_URL.contains("example.com") {
+        return Ok(RegisterAuthResponse {
+            code: code.clone(),
+            sid: format!("local_sid_{}", code),
+            web_url,
+        });
+    }
+
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .build()
+        .map_err(|e| e.to_string())?;
+
     let payload = serde_json::json!({
         "operation": "registerAuthenticationCode",
         "code": code,
@@ -223,29 +246,22 @@ async fn register_auth_code(
         .json(&payload)
         .send()
         .await
-        .map_err(|e| format!("API接続失敗: {}", e))?;
+        .map_err(|e| format!("サーバー接続失敗: {}", e))?;
 
     if !res.status().is_success() {
-        return Err(format!("サーバーエラー: ステータス {}", res.status()));
+        return Err(format!("サーバーエラー: HTTPステータス {}", res.status()));
     }
 
     let json: serde_json::Value = res
         .json()
         .await
-        .map_err(|e| format!("レスポンス解析失敗: {}", e))?;
+        .map_err(|e| format!("レスポンスJSON解析失敗: {}", e))?;
 
     let sid = json
         .get("sid")
         .and_then(|v| v.as_str())
-        .ok_or_else(|| "sidキーが見つかりません".to_string())?
+        .ok_or_else(|| "サーバー応答に 'sid' キーが見つかりません".to_string())?
         .to_string();
-
-    let web_url = format!(
-        "{}?code={}&username={}",
-        WEB_AUTH_PAGE_URL,
-        url_encode(&code),
-        url_encode(&username)
-    );
 
     Ok(RegisterAuthResponse {
         code,
@@ -260,7 +276,15 @@ async fn check_auth_status(
     username: String,
     device: String,
 ) -> Result<String, String> {
-    let client = reqwest::Client::new();
+    if API_BASE_URL.contains("your-server-domain.com") || API_BASE_URL.contains("example.com") {
+        return Ok("unauthenticated".to_string());
+    }
+
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(5))
+        .build()
+        .map_err(|e| e.to_string())?;
+
     let payload = serde_json::json!({
         "operation": "checkAlreadyLogin",
         "SID": sid,
@@ -319,7 +343,6 @@ fn logout(state: State<AppState>) -> Result<(), String> {
     Ok(())
 }
 
-// 日本語メニューバーの構築
 fn create_japanese_menu<R: tauri::Runtime>(
     app: &tauri::AppHandle<R>,
 ) -> tauri::Result<tauri::menu::Menu<R>> {
@@ -369,7 +392,6 @@ fn main() {
 
     tauri::Builder::default()
         .setup(|app| {
-            // 日本語メニューバーをセット
             let menu = create_japanese_menu(app.handle())?;
             app.set_menu(menu)?;
             Ok(())

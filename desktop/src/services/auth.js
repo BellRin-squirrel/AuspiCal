@@ -88,9 +88,12 @@ function stopAuthPolling() {
 
 function startAuthWaiting({ sid, code, webUrl, username, device }) {
   currentWebAuthUrl = webUrl;
+
+  // 入力画面を隠し、待機画面（認証コード表示）に確実に切り替える
   authStepInput.classList.add("hidden");
   authStepWaiting.classList.remove("hidden");
   authErrorMsg.classList.add("hidden");
+  authErrorMsg.textContent = "";
 
   authDisplayCode.textContent = code;
 
@@ -105,7 +108,7 @@ function startAuthWaiting({ sid, code, webUrl, username, device }) {
     try {
       await invoke("open_in_browser", { url: currentWebAuthUrl });
     } catch (err) {
-      alert(`ブラウザ起動失敗: ${err.message || err}`);
+      showAuthError(`ブラウザ起動失敗: ${err.message || err}`);
     }
   };
 
@@ -131,13 +134,12 @@ function startAuthWaiting({ sid, code, webUrl, username, device }) {
         setCurrentUser(userObj);
         updateAccountUI();
         closeAuthModal();
-        alert(`「${username}」としてログインが完了しました！`);
       } else if (status === "expired") {
         stopAuthPolling();
         showAuthError("認証コードの有効期限が切れました。再度お試しください。");
       }
     } catch (err) {
-      console.error("Polling error:", err);
+      console.warn("Polling warning:", err);
     }
   }, 3000);
 }
@@ -192,9 +194,16 @@ export function initAuth() {
 
     startAuthBtn.disabled = true;
     startAuthBtn.textContent = "認証コードを発行中...";
+    authErrorMsg.classList.add("hidden");
+    authErrorMsg.textContent = "";
 
     try {
       const res = await invoke("register_auth_code", { username, device });
+      if (!res || !res.code) {
+        throw new Error("認証コードの取得に失敗しました。");
+      }
+
+      // Step 2（待機・コード表示）へ切り替え
       startAuthWaiting({
         sid: res.sid,
         code: res.code,
@@ -203,7 +212,8 @@ export function initAuth() {
         device,
       });
     } catch (err) {
-      alert(`エラー: ${err.message || err}`);
+      console.error("register_auth_code エラー:", err);
+      showAuthError(`エラー: ${err.message || err}`);
       startAuthBtn.disabled = false;
       startAuthBtn.textContent = "ウェブで認証";
     }

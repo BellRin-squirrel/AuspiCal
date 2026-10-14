@@ -24,13 +24,11 @@
       </div>
 
       <div class="header-right">
-        <!-- 検索 -->
         <div class="search-box">
           <input type="text" id="searchInput" placeholder="予定を検索..." />
           <button id="clearSearchBtn" class="btn-clear hidden">&times;</button>
         </div>
 
-        <!-- 4ビュー切り替え (Y, M, W, D) -->
         <div class="view-switcher">
           <button data-view="year" class="btn btn-view" title="ショートカット: Y">年 (Y)</button>
           <button data-view="month" class="btn btn-view active" title="ショートカット: M">月 (M)</button>
@@ -38,10 +36,8 @@
           <button data-view="day" class="btn btn-view" title="ショートカット: D">日 (D)</button>
         </div>
 
-        <!-- 予定追加ボタン -->
         <button id="openAddModalBtn" class="btn btn-primary">+ 予定を追加</button>
 
-        <!-- アカウントボタン -->
         <div class="account-menu-container">
           <button id="accountBtn" class="btn-account" title="アカウント">
             <span id="accountAvatarIcon" class="avatar-icon">👤</span>
@@ -111,6 +107,10 @@
         <button id="closeAuthModalBtn" class="btn-close">&times;</button>
       </div>
 
+      <!-- モーダル共通エラー枠 -->
+      <div id="authErrorMsg" class="auth-error-msg hidden"></div>
+
+      <!-- Step 1: 入力画面 -->
       <div id="authStepInput">
         <form id="authInitForm">
           <div class="form-group">
@@ -131,6 +131,7 @@
         </form>
       </div>
 
+      <!-- Step 2: 待機画面 -->
       <div id="authStepWaiting" class="hidden">
         <div class="auth-code-container">
           <div class="auth-code-label">発行された認証コード</div>
@@ -152,8 +153,6 @@
             <span id="pollingTimerText" class="timer-badge">残り 05:00</span>
           </div>
         </div>
-
-        <div id="authErrorMsg" class="auth-error-msg hidden"></div>
 
         <div class="modal-actions" style="margin-top: 16px;">
           <button type="button" id="abortAuthBtn" class="btn btn-secondary">認証を中止</button>
@@ -246,7 +245,6 @@
 
   <div id="searchResults" class="search-dropdown hidden"></div>
 
-  <!-- ★ type="module" でエントリーポイントを読み込みます -->
   <script type="module" src="main.js"></script>
 </body>
 </html>
